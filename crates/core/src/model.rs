@@ -69,6 +69,17 @@ pub struct Finding {
     pub line: Option<u32>,
 }
 
+/// Uma dependência declarada no projeto.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct Dependency {
+    pub name: String,
+    /// Especificador declarado (p.ex. `^4.1.2`).
+    pub current: String,
+    /// Versão mais recente, quando conhecida e diferente da atual.
+    pub latest: Option<String>,
+    pub dev: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpgradeTarget {
     pub package: String,

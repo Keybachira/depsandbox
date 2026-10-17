@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/core", "crates/adapters", "crates/report", "crates/cli"]
+members = ["crates/core", "crates/adapters", "crates/report", "crates/tui", "crates/cli"]
 
 [workspace.package]
 version = "0.1.0"
@@ -19,3 +19,6 @@ inquire = "0.6"
 depsandbox-core = { path = "crates/core" }
 depsandbox-adapters = { path = "crates/adapters" }
 depsandbox-report = { path = "crates/report" }
+depsandbox-tui = { path = "crates/tui" }
+ratatui = "0.26"
+crossterm = "0.27"

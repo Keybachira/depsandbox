@@ -8,6 +8,7 @@ e gera um relatório do que quebrou.
 - ✔ Adapter **npm**
 - ✔ `init` (interativo, `--yes`, flags, `--dry-run`)
 - ✔ `try`: snapshot → baseline 2x (deteta testes instáveis) → upgrade → comparação
+- ✔ **TUI** (`depsandbox tui`): lista dependências, marca, testa em segundo plano, vê o relatório
 - ✔ Relatório em Markdown e JSON (+ `schema` com o JSON Schema)
 - ☐ cargo, pip/uv · bisect · mapa de uso no código · advisories · container · `promote`
 
@@ -24,6 +25,25 @@ depsandbox try axios --format json -o relatorio.json
 depsandbox schema > report.schema.json
 ```
 
+### TUI
+
+```
+depsandbox tui            # na pasta do projeto
+```
+
+| Tecla | Ação |
+|---|---|
+| `↑↓` / `j k` | mover |
+| `espaço` | marcar/desmarcar pacote |
+| `a` | marcar/desmarcar todos os desatualizados |
+| `t` / `Enter` | testar os marcados (ou o selecionado, se nenhum marcado) |
+| `s` | guardar o relatório do selecionado (`depsandbox-report-<pacote>.md`) |
+| `r` | reconsultar versões novas |
+| `PgUp/PgDn` | rolar o detalhe |
+| `q` / `Esc` | sair |
+
+Os testes correm em fila, um sandbox de cada vez. Pacotes em `ignore` aparecem a cinzento e não são testados.
+
 Código de saída de `try`: `0` sem problemas detetados, `1` problemas, `2` erro da ferramenta.
 
 ## Estrutura
@@ -32,6 +52,7 @@ Código de saída de `try`: `0` sem problemas detetados, `1` problemas, `2` erro
 crates/core      modelo do relatório, trait Adapter, sandbox, motor
 crates/adapters  um adapter por ecossistema (npm)
 crates/report    vistas do relatório (md, json)
+crates/tui       interface interativa (ratatui + crossterm)
 crates/cli       clap + wizard de init
 ```
 

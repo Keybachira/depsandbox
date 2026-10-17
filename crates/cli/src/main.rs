@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use depsandbox_core::{engine, Config, Report, UpgradeTarget, Verdict};
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(name = "depsandbox", version, about)]
@@ -44,6 +45,11 @@ enum Cmd {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+    /// Abre a interface interativa (TUI): escolhe pacotes, testa e vê os resultados
+    Tui {
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+    },
     /// Imprime o JSON Schema do relatório
     Schema,
 }
@@ -71,6 +77,12 @@ fn run() -> Result<ExitCode> {
             Ok(ExitCode::SUCCESS)
         }
         Cmd::Try { package, path, format, output } => try_cmd(&package, &path, format, output),
+        Cmd::Tui { path } => {
+            let cfg = Config::load(&path)?;
+            let adapter = pick_adapter(&path)?;
+            depsandbox_tui::run(path, adapter, cfg)?;
+            Ok(ExitCode::SUCCESS)
+        }
         Cmd::Schema => {
             let schema = schemars::schema_for!(Report);
             println!("{}", serde_json::to_string_pretty(&schema)?);
@@ -81,16 +93,7 @@ fn run() -> Result<ExitCode> {
 
 fn try_cmd(package: &str, path: &PathBuf, format: Format, output: Option<PathBuf>) -> Result<ExitCode> {
     let cfg = Config::load(path)?;
-    let adapters = depsandbox_adapters::detect(path);
-    let adapter = match adapters.as_slice() {
-        [] => bail!("nenhum ecossistema suportado detectado em {}", path.display()),
-        [a] => a,
-        many => bail!(
-            "{} ecossistemas detectados ({:?}); suporte a vários ainda não implementado",
-            many.len(),
-            many.iter().map(|a| a.ecosystem()).collect::<Vec<_>>()
-        ),
-    };
+    let adapter = pick_adapter(path)?;
 
     let target = UpgradeTarget::parse(package);
     if cfg.ignore.iter().any(|i| i == &target.package) {
@@ -115,4 +118,16 @@ fn try_cmd(package: &str, path: &PathBuf, format: Format, output: Option<PathBuf
         Verdict::NoIssuesDetected => ExitCode::SUCCESS,
         _ => ExitCode::from(1),
     })
+}
+
+fn pick_adapter(path: &std::path::Path) -> Result<Arc<dyn depsandbox_core::Adapter>> {
+    let mut adapters = depsandbox_adapters::detect(path);
+    match adapters.len() {
+        0 => bail!("nenhum ecossistema suportado detectado em {}", path.display()),
+        1 => Ok(adapters.remove(0)),
+        n => bail!(
+            "{n} ecossistemas detectados ({:?}); suporte a vários ainda não implementado",
+            adapters.iter().map(|a| a.ecosystem()).collect::<Vec<_>>()
+        ),
+    }
 }

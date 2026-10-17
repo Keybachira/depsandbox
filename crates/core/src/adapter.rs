@@ -1,4 +1,5 @@
-use crate::model::{Ecosystem, UpgradeTarget};
+use crate::model::{Dependency, Ecosystem, UpgradeTarget};
+use std::collections::HashMap;
 use anyhow::Result;
 use std::path::Path;
 
@@ -10,7 +11,7 @@ pub struct CheckSpec {
 }
 
 /// Interface comum a todos os ecossistemas.
-pub trait Adapter {
+pub trait Adapter: Send + Sync {
     fn ecosystem(&self) -> Ecosystem;
     /// O diretório contém um projeto deste ecossistema?
     fn detect(&self, dir: &Path) -> bool;
@@ -24,4 +25,8 @@ pub trait Adapter {
     fn checks(&self, dir: &Path) -> Result<Vec<CheckSpec>>;
     /// Ferramentas cujas versões entram no manifest, p.ex. ("node", "node --version").
     fn tool_versions_cmds(&self) -> Vec<(&'static str, &'static str)>;
+    /// Dependências declaradas (leitura local, rápida).
+    fn dependencies(&self, dir: &Path) -> Result<Vec<Dependency>>;
+    /// Versões mais recentes por pacote (consulta o registo; lenta). Só inclui pacotes desatualizados.
+    fn latest_versions(&self, dir: &Path) -> Result<HashMap<String, String>>;
 }

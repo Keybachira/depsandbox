@@ -1,5 +1,7 @@
-use anyhow::Result;
-use depsandbox_core::{Adapter, CheckSpec, Ecosystem, UpgradeTarget};
+use anyhow::{bail, Result};
+use depsandbox_core::runner::{run_shell, tail};
+use depsandbox_core::{Adapter, CheckSpec, Dependency, Ecosystem, UpgradeTarget};
+use std::collections::HashMap;
 use std::path::Path;
 
 pub struct NpmAdapter;
@@ -45,6 +47,49 @@ impl Adapter for NpmAdapter {
         }
         if has("test") && !is_placeholder_test(scripts.and_then(|s| s["test"].as_str())) {
             out.push(CheckSpec { name: "test".into(), command: "npm test".into() });
+        }
+        Ok(out)
+    }
+
+    fn dependencies(&self, dir: &Path) -> Result<Vec<Dependency>> {
+        let raw = std::fs::read_to_string(dir.join("package.json"))?;
+        let pkg: serde_json::Value = serde_json::from_str(&raw)?;
+        let mut out = vec![];
+        for (key, dev) in [("dependencies", false), ("devDependencies", true)] {
+            if let Some(map) = pkg.get(key).and_then(|v| v.as_object()) {
+                for (name, spec) in map {
+                    out.push(Dependency {
+                        name: name.clone(),
+                        current: spec.as_str().unwrap_or("?").to_string(),
+                        latest: None,
+                        dev,
+                    });
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    fn latest_versions(&self, dir: &Path) -> Result<HashMap<String, String>> {
+        // `npm outdated` sai com código 1 quando há pacotes desatualizados: não é erro.
+        let o = run_shell("npm outdated --json", dir);
+        if o.spawn_error {
+            bail!("{}", o.text);
+        }
+        let Some(start) = o.stdout.find('{') else {
+            if o.ok {
+                return Ok(HashMap::new());
+            }
+            bail!("{}", tail(&o.text, 5));
+        };
+        let v: serde_json::Value = serde_json::from_str(&o.stdout[start..])?;
+        let mut out = HashMap::new();
+        if let Some(map) = v.as_object() {
+            for (name, info) in map {
+                if let Some(l) = info.get("latest").and_then(|l| l.as_str()) {
+                    out.insert(name.clone(), l.to_string());
+                }
+            }
         }
         Ok(out)
     }

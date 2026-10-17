@@ -18,3 +18,4 @@ serde_json.workspace = true
 depsandbox-core.workspace = true
 depsandbox-adapters.workspace = true
 depsandbox-report.workspace = true
+depsandbox-tui.workspace = true

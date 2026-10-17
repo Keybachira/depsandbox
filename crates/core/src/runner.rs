@@ -7,6 +7,8 @@ pub struct Output {
     pub ok: bool,
     pub code: Option<i32>,
     pub text: String,
+    /// Só stdout (útil para parsear JSON sem o ruído do stderr).
+    pub stdout: String,
     pub spawn_error: bool,
     pub duration_ms: u128,
 }
@@ -26,12 +28,14 @@ pub fn run_shell(command: &str, cwd: &Path) -> Output {
     cmd.current_dir(cwd).env("CI", "1");
     match cmd.output() {
         Ok(o) => {
-            let mut text = String::from_utf8_lossy(&o.stdout).into_owned();
+            let stdout = String::from_utf8_lossy(&o.stdout).into_owned();
+            let mut text = stdout.clone();
             text.push_str(&String::from_utf8_lossy(&o.stderr));
             Output {
                 ok: o.status.success(),
                 code: o.status.code(),
                 text,
+                stdout,
                 spawn_error: false,
                 duration_ms: start.elapsed().as_millis(),
             }
@@ -40,6 +44,7 @@ pub fn run_shell(command: &str, cwd: &Path) -> Output {
             ok: false,
             code: None,
             text: e.to_string(),
+            stdout: String::new(),
             spawn_error: true,
             duration_ms: start.elapsed().as_millis(),
         },
