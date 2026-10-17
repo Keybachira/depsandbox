@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "crates/adapters", "crates/report", "crates/cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "0.8"
+toml = "0.8"
+tempfile = "3"
+clap = { version = "4.4", features = ["derive"] }
+inquire = "0.6"
+depsandbox-core = { path = "crates/core" }
+depsandbox-adapters = { path = "crates/adapters" }
+depsandbox-report = { path = "crates/report" }
