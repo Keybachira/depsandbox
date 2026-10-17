@@ -10,3 +10,5 @@ ratatui.workspace = true
 crossterm.workspace = true
 depsandbox-core.workspace = true
 depsandbox-report.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+serde_json.workspace = true

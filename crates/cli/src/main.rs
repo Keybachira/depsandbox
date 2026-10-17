@@ -2,6 +2,7 @@ mod init;
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+use depsandbox_core::engine::RunOptions;
 use depsandbox_core::{engine, Config, Report, UpgradeTarget, Verdict};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -100,7 +101,7 @@ fn try_cmd(package: &str, path: &PathBuf, format: Format, output: Option<PathBuf
         bail!("'{}' está em `ignore` no depsandbox.toml", target.package);
     }
 
-    let report = engine::try_upgrade(adapter.as_ref(), path, &target, &cfg, &|m| eprintln!("• {m}"))?;
+    let report = engine::try_upgrade(adapter.as_ref(), path, &target, &cfg, &RunOptions::default(), &|m| eprintln!("• {m}"))?;
 
     let text = match format {
         Format::Md => depsandbox_report::to_markdown(&report),

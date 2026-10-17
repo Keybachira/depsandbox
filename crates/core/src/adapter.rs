@@ -29,4 +29,6 @@ pub trait Adapter: Send + Sync {
     fn dependencies(&self, dir: &Path) -> Result<Vec<Dependency>>;
     /// Versões mais recentes por pacote (consulta o registo; lenta). Só inclui pacotes desatualizados.
     fn latest_versions(&self, dir: &Path) -> Result<HashMap<String, String>>;
+    /// Todas as versões publicadas de um pacote (consulta o registo).
+    fn available_versions(&self, dir: &Path, package: &str) -> Result<Vec<String>>;
 }

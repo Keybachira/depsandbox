@@ -99,6 +99,20 @@ impl UpgradeTarget {
         }
     }
 
+    /// Recusa caracteres com significado especial no shell (o spec vai para uma linha de comando).
+    pub fn validate(&self) -> anyhow::Result<()> {
+        let ok = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || "@/._-^~<>=*+".contains(c));
+        if !ok(&self.package) {
+            anyhow::bail!("nome de pacote inválido: {:?}", self.package);
+        }
+        if let Some(v) = &self.version {
+            if !ok(v) {
+                anyhow::bail!("versão inválida: {:?}", v);
+            }
+        }
+        Ok(())
+    }
+
     pub fn spec(&self) -> String {
         format!("{}@{}", self.package, self.version.as_deref().unwrap_or("latest"))
     }
@@ -124,6 +138,13 @@ pub struct Manifest {
     pub lockfile_sha: Option<String>,
 }
 
+/// Tempo gasto numa etapa da execução (sandbox, install, baseline...).
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct StepTiming {
+    pub name: String,
+    pub duration_ms: u128,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Report {
     pub schema_version: u32,
@@ -135,6 +156,8 @@ pub struct Report {
     pub after: Vec<CheckResult>,
     pub findings: Vec<Finding>,
     pub verdict: Verdict,
+    #[serde(default)]
+    pub steps: Vec<StepTiming>,
 }
 
 #[cfg(test)]
@@ -152,5 +175,13 @@ mod tests {
         let t = UpgradeTarget::parse("@scope/pkg");
         assert_eq!((t.package.as_str(), t.version), ("@scope/pkg", None));
         assert_eq!(UpgradeTarget::parse("lodash").spec(), "lodash@latest");
+    }
+
+    #[test]
+    fn validate_rejects_shell_metachars() {
+        assert!(UpgradeTarget::parse("chalk@^5").validate().is_ok());
+        assert!(UpgradeTarget::parse("@scope/pkg@1.2.3").validate().is_ok());
+        assert!(UpgradeTarget::parse("x; rm -rf /").validate().is_err());
+        assert!(UpgradeTarget::parse("x@1 && calc").validate().is_err());
     }
 }

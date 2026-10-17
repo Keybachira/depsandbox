@@ -6,6 +6,48 @@ use crate::sandbox;
 use anyhow::Result;
 use sha2::{Digest, Sha256};
 use std::path::Path;
+use std::time::Instant;
+
+/// Que verificações correr.
+#[derive(Debug, Clone)]
+pub struct RunOptions {
+    pub tests: bool,
+    pub build: bool,
+    pub typecheck: bool,
+}
+
+impl Default for RunOptions {
+    fn default() -> Self {
+        Self { tests: true, build: true, typecheck: true }
+    }
+}
+
+/// Anuncia cada etapa a `progress` e regista o tempo gasto nela.
+struct Stepper<'a> {
+    progress: &'a dyn Fn(&str),
+    cur: Option<(String, Instant)>,
+    done: Vec<StepTiming>,
+}
+
+impl<'a> Stepper<'a> {
+    fn new(progress: &'a dyn Fn(&str)) -> Self {
+        Self { progress, cur: None, done: vec![] }
+    }
+    fn begin(&mut self, name: &str) {
+        self.finish();
+        (self.progress)(name);
+        self.cur = Some((name.to_string(), Instant::now()));
+    }
+    fn finish(&mut self) {
+        if let Some((name, t)) = self.cur.take() {
+            self.done.push(StepTiming { name, duration_ms: t.elapsed().as_millis() });
+        }
+    }
+    fn into_steps(mut self) -> Vec<StepTiming> {
+        self.finish();
+        self.done
+    }
+}
 
 /// Fluxo central: snapshot -> baseline (2x) -> upgrade -> checks -> comparação.
 pub fn try_upgrade(
@@ -13,8 +55,10 @@ pub fn try_upgrade(
     project: &Path,
     target: &UpgradeTarget,
     cfg: &Config,
+    opts: &RunOptions,
     progress: &dyn Fn(&str),
 ) -> Result<Report> {
+    target.validate()?;
     let project_name = project
         .canonicalize()
         .ok()
@@ -31,13 +75,15 @@ pub fn try_upgrade(
         after: vec![],
         findings: vec![],
         verdict: Verdict::NoIssuesDetected,
+        steps: vec![],
     };
+    let mut st = Stepper::new(progress);
 
-    progress("a criar sandbox (cópia do projeto)");
+    st.begin("Criando ambiente isolado");
     let sb = sandbox::snapshot(project)?;
     let dir = sb.path();
 
-    progress("a instalar dependências atuais (baseline)");
+    st.begin("Instalando dependências atuais (baseline)");
     let inst = run_shell(&adapter.install_cmd(dir), dir);
     if !inst.ok {
         report.findings.push(Finding {
@@ -50,28 +96,34 @@ pub fn try_upgrade(
         });
         report.baseline.push(failed_install("install (baseline)", &adapter.install_cmd(dir), &inst.text, inst.code));
         report.verdict = Verdict::BaselineBroken;
+        report.steps = st.into_steps();
         return Ok(report);
     }
 
-    let checks = apply_overrides(adapter.checks(dir)?, cfg);
+    let mut checks = apply_overrides(adapter.checks(dir)?, cfg);
+    checks.retain(|c| match c.name.as_str() {
+        "test" => opts.tests,
+        "build" => opts.build,
+        "typecheck" => opts.typecheck,
+        _ => true,
+    });
     if checks.is_empty() {
         report.findings.push(Finding {
             kind: FindingKind::PreExistingFailure,
             severity: Severity::Warning,
             check: None,
-            message: "Nenhuma verificação encontrada (sem scripts de build/test). Configure-as em depsandbox.toml.".into(),
+            message: "Nenhuma verificação ativa (sem scripts de build/test, ou todas desligadas).".into(),
             file: None,
             line: None,
         });
     }
 
-    progress("baseline: execução 1/2");
+    st.begin("Executando baseline (2 execuções)");
     let run1: Vec<_> = checks.iter().map(|c| run_check(&c.name, &c.command, dir)).collect();
-    progress("baseline: execução 2/2 (deteção de testes instáveis)");
     let run2: Vec<_> = checks.iter().map(|c| run_check(&c.name, &c.command, dir)).collect();
     report.baseline = run1.into_iter().zip(run2).map(|(a, b)| merge_runs(a, b)).collect();
 
-    progress(&format!("a aplicar upgrade {}", target.spec()));
+    st.begin(&format!("Aplicando upgrade {}", target.spec()));
     let up_cmd = adapter.upgrade_cmd(target);
     let up = run_shell(&up_cmd, dir);
     if !up.ok {
@@ -85,14 +137,17 @@ pub fn try_upgrade(
         });
         report.after.push(failed_install("upgrade", &up_cmd, &up.text, up.code));
         report.verdict = Verdict::InstallFailed;
+        report.steps = st.into_steps();
         return Ok(report);
     }
 
-    progress("a correr verificações após o upgrade");
+    st.begin("Verificando após o upgrade");
     report.after = checks.iter().map(|c| run_check(&c.name, &c.command, dir)).collect();
 
+    st.begin("Analisando resultados");
     report.findings.extend(compare(&report.baseline, &report.after));
     report.verdict = verdict(&report);
+    report.steps = st.into_steps();
     Ok(report)
 }
 

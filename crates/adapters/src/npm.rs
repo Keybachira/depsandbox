@@ -29,7 +29,7 @@ impl Adapter for NpmAdapter {
     }
 
     fn upgrade_cmd(&self, target: &UpgradeTarget) -> String {
-        format!("npm install {} --no-audit --no-fund", target.spec())
+        format!("npm install \"{}\" --no-audit --no-fund", target.spec())
     }
 
     fn checks(&self, dir: &Path) -> Result<Vec<CheckSpec>> {
@@ -39,6 +39,10 @@ impl Adapter for NpmAdapter {
         let has = |n: &str| scripts.map_or(false, |s| s.contains_key(n));
 
         let mut out = vec![];
+        // Sem script `typecheck`, mas com tsconfig e tsc instalado: usa `tsc --noEmit`.
+        if !has("typecheck") && dir.join("tsconfig.json").is_file() && has_tsc(dir) {
+            out.push(CheckSpec { name: "typecheck".into(), command: "npx --no-install tsc --noEmit".into() });
+        }
         // Ordem: tipos -> build -> testes (falha rápida e mais barata primeiro).
         for name in ["typecheck", "build"] {
             if has(name) {
@@ -94,6 +98,21 @@ impl Adapter for NpmAdapter {
         Ok(out)
     }
 
+    fn available_versions(&self, dir: &Path, package: &str) -> Result<Vec<String>> {
+        if package.is_empty() || !package.chars().all(|c| c.is_ascii_alphanumeric() || "@/._-".contains(c)) {
+            bail!("nome de pacote inválido: {package:?}");
+        }
+        let o = run_shell(&format!("npm view \"{package}\" versions --json"), dir);
+        if !o.ok {
+            bail!("{}", tail(&o.text, 3));
+        }
+        match serde_json::from_str::<serde_json::Value>(o.stdout.trim())? {
+            serde_json::Value::Array(a) => Ok(a.into_iter().filter_map(|x| x.as_str().map(String::from)).collect()),
+            serde_json::Value::String(s) => Ok(vec![s]),
+            _ => Ok(vec![]),
+        }
+    }
+
     fn tool_versions_cmds(&self) -> Vec<(&'static str, &'static str)> {
         vec![("node", "node --version"), ("npm", "npm --version")]
     }
@@ -102,4 +121,9 @@ impl Adapter for NpmAdapter {
 /// O `npm init` gera "echo \"Error: no test specified\" && exit 1"; não é um teste real.
 fn is_placeholder_test(cmd: Option<&str>) -> bool {
     cmd.map_or(false, |c| c.contains("no test specified"))
+}
+
+fn has_tsc(dir: &Path) -> bool {
+    let bin = dir.join("node_modules").join(".bin");
+    bin.join("tsc").exists() || bin.join("tsc.cmd").exists()
 }

@@ -8,8 +8,8 @@ e gera um relatório do que quebrou.
 - ✔ Adapter **npm**
 - ✔ `init` (interativo, `--yes`, flags, `--dry-run`)
 - ✔ `try`: snapshot → baseline 2x (deteta testes instáveis) → upgrade → comparação
-- ✔ **TUI** (`depsandbox tui`): lista dependências, marca, testa em segundo plano, vê o relatório
-- ✔ Relatório em Markdown e JSON (+ `schema` com o JSON Schema)
+- ✔ **TUI** (`depsandbox tui`): assistente de upgrade, execução ao vivo, resultados, relatórios
+- ✔ Relatório em Markdown, JSON e HTML (+ `schema` com o JSON Schema)
 - ☐ cargo, pip/uv · bisect · mapa de uso no código · advisories · container · `promote`
 
 ## Uso
@@ -31,18 +31,29 @@ depsandbox schema > report.schema.json
 depsandbox tui            # na pasta do projeto
 ```
 
+Assistente de upgrade em 3 passos (projeto, pacote, opções), com execução ao vivo
+(etapas e tempos), resultados por verificação e log. Ao abrir, a TUI consulta o registo
+e sugere o primeiro pacote desatualizado; a versão alvo oferece a mais recente de cada major.
+
 | Tecla | Ação |
 |---|---|
-| `↑↓` / `j k` | mover |
-| `espaço` | marcar/desmarcar pacote |
-| `a` | marcar/desmarcar todos os desatualizados |
-| `t` / `Enter` | testar os marcados (ou o selecionado, se nenhum marcado) |
-| `s` | guardar o relatório do selecionado (`depsandbox-report-<pacote>.md`) |
+| `↑↓` | mover entre pacote, versão, opções e botão |
+| `←→` | mudar a versão alvo / alternar coluna de opções |
+| `Espaço` / `Enter` | marcar opção · abrir seletor · **Iniciar Upgrade** |
+| `Ctrl+K` | selecionar outra dependência (digite para filtrar) |
+| `t` | iniciar o upgrade a partir de qualquer campo |
+| `d` | alternar entre as etapas e os detalhes dos achados |
+| `s` | guardar o relatório (md, json, html) |
 | `r` | reconsultar versões novas |
-| `PgUp/PgDn` | rolar o detalhe |
-| `q` / `Esc` | sair |
+| `Tab` / `1…6` | trocar de tela (Upgrade, Relatórios, Ambientes, Configurações, Documentação, Sobre) |
+| `Esc` / `q` | voltar / sair |
 
-Os testes correm em fila, um sandbox de cada vez. Pacotes em `ignore` aparecem a cinzento e não são testados.
+Com “Gerar relatório” ligado, cada execução grava `.md`, `.json` e `.html` em
+`.depsandbox/reports/` (a tela **Ver Relatórios** lista e abre os guardados).
+**Ver Ambientes** mostra sandboxes temporários que sobraram (`d` apaga).
+
+Requer terminal com cores 24-bit (Windows Terminal, iTerm2, GNOME Terminal...) e mínimo de 80×24;
+o layout completo com barra lateral aparece a partir de 120 colunas.
 
 Código de saída de `try`: `0` sem problemas detetados, `1` problemas, `2` erro da ferramenta.
 
