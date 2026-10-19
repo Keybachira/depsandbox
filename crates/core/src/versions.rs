@@ -37,9 +37,9 @@ pub fn major_choices(all: &[String], current: Option<Triple>, max: usize) -> Vec
     let mut stable: Vec<(Triple, &String)> = all
         .iter()
         .filter_map(|v| parse_stable(v).map(|t| (t, v)))
-        .filter(|(t, _)| current.map_or(true, |c| *t > c))
+        .filter(|(t, _)| current.is_none_or(|c| *t > c))
         .collect();
-    stable.sort_by(|a, b| b.0.cmp(&a.0));
+    stable.sort_by_key(|b| std::cmp::Reverse(b.0));
     let mut out: Vec<MajorChoice> = vec![];
     for ((major, _, _), v) in stable {
         if out.iter().any(|m| m.major == major) {

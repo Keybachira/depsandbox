@@ -104,7 +104,7 @@ fn config(f: &mut Frame, app: &App, area: Rect, roomy: bool) {
     };
     let more = if app.choices_loading { " …" } else { "" };
     lines.push(Line::from(vec![
-        Span::raw(format!("{ind}")),
+        Span::raw(ind.to_string()),
         label(pad_right("Versão alvo", 12)),
         field(format!(" {ver_label} ▾{more} "), app.focus == Focus::Ver),
         if w >= 62 { dim("   Selecionar outra ") } else { Span::raw("") },

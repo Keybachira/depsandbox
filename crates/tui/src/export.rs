@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 pub struct Saved {
     pub html: String,
     pub json: String,
-    pub md: String,
 }
 
 pub struct SavedReport {
@@ -36,7 +35,7 @@ pub fn save_all(report: &Report, project: &Path) -> Result<Saved> {
     write("md", depsandbox_report::to_markdown(report))?;
     write("json", depsandbox_report::to_json(report)?)?;
     write("html", depsandbox_report::to_html(report))?;
-    Ok(Saved { html: rel("html"), json: rel("json"), md: rel("md") })
+    Ok(Saved { html: rel("html"), json: rel("json") })
 }
 
 /// Relatórios guardados, do mais recente para o mais antigo.
@@ -44,7 +43,7 @@ pub fn list_reports(project: &Path) -> Vec<SavedReport> {
     let Ok(rd) = std::fs::read_dir(reports_dir(project)) else { return vec![] };
     let mut out: Vec<SavedReport> = rd
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |x| x == "json"))
+        .filter(|e| e.path().extension().is_some_and(|x| x == "json"))
         .filter_map(|e| {
             let stem = e.path().file_stem()?.to_string_lossy().into_owned();
             let report: Report = serde_json::from_str(&std::fs::read_to_string(e.path()).ok()?).ok()?;

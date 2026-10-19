@@ -97,7 +97,7 @@ pub fn footer(f: &mut Frame, app: &App, area: Rect) {
     left.push(key("q"));
     left.push(dim(" Sair"));
 
-    let cursor = if (app.tick / 5) % 2 == 0 { "_" } else { " " };
+    let cursor = if (app.tick / 5).is_multiple_of(2) { "_" } else { " " };
     let lw: usize = left.iter().map(|s| s.content.chars().count()).sum();
     let tail_w = 14; // "depsandbox _ "
     // O estado ocupa o espaço que sobrar depois das dicas; sem espaço, só as dicas.

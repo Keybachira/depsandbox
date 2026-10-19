@@ -8,8 +8,23 @@ pub const SCHEMA_VERSION: u32 = 1;
 #[serde(rename_all = "lowercase")]
 pub enum Ecosystem {
     Npm,
+    Pnpm,
+    Yarn,
     Pip,
     Cargo,
+}
+
+impl Ecosystem {
+    /// Nome conforme escrito no depsandbox.toml (`ecosystem = "pnpm"`).
+    pub fn name(self) -> &'static str {
+        match self {
+            Ecosystem::Npm => "npm",
+            Ecosystem::Pnpm => "pnpm",
+            Ecosystem::Yarn => "yarn",
+            Ecosystem::Pip => "pip",
+            Ecosystem::Cargo => "cargo",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

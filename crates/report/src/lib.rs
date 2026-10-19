@@ -46,7 +46,7 @@ pub fn to_markdown(r: &Report) -> String {
         let _ = writeln!(s, "Nenhum.");
     }
     let mut findings = r.findings.clone();
-    findings.sort_by(|a, b| b.severity.cmp(&a.severity));
+    findings.sort_by_key(|f| std::cmp::Reverse(f.severity));
     for f in &findings {
         let loc = match (&f.file, f.line) {
             (Some(file), Some(l)) => format!(" (`{file}:{l}`)"),

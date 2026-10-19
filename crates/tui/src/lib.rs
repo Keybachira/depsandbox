@@ -13,7 +13,7 @@ use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScree
 use depsandbox_core::{Adapter, Config};
 use ratatui::prelude::*;
 use std::io::{stdout, IsTerminal};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Sender};
 use std::sync::Arc;
 use std::time::Duration;
@@ -92,14 +92,14 @@ pub fn run(project: PathBuf, adapter: Arc<dyn Adapter>, cfg: Config) -> Result<(
     Ok(())
 }
 
-fn exec(cmd: Cmd, app: &mut App, adapter: &Arc<dyn Adapter>, project: &PathBuf, cfg: &Config, tx: &Sender<Msg>) {
+fn exec(cmd: Cmd, app: &mut App, adapter: &Arc<dyn Adapter>, project: &Path, cfg: &Config, tx: &Sender<Msg>) {
     match cmd {
-        Cmd::Start(req) => worker::spawn_run(adapter.clone(), project.clone(), cfg.clone(), req, tx.clone()),
-        Cmd::LoadVersions(name) => worker::spawn_versions(adapter.clone(), project.clone(), name, tx.clone()),
+        Cmd::Start(req) => worker::spawn_run(adapter.clone(), project.to_path_buf(), cfg.clone(), req, tx.clone()),
+        Cmd::LoadVersions(name) => worker::spawn_versions(adapter.clone(), project.to_path_buf(), name, tx.clone()),
         Cmd::RefreshLatest => {
-            worker::spawn_latest(adapter.clone(), project.clone(), tx.clone());
+            worker::spawn_latest(adapter.clone(), project.to_path_buf(), tx.clone());
             if let Some(d) = app.dep() {
-                worker::spawn_versions(adapter.clone(), project.clone(), d.name.clone(), tx.clone());
+                worker::spawn_versions(adapter.clone(), project.to_path_buf(), d.name.clone(), tx.clone());
             }
         }
         Cmd::SaveNow => {

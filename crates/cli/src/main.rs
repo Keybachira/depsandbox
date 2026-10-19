@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use depsandbox_core::engine::RunOptions;
 use depsandbox_core::{engine, Config, Report, UpgradeTarget, Verdict};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
 
@@ -77,10 +77,13 @@ fn run() -> Result<ExitCode> {
             init::run(&path, yes, test_cmd, build_cmd, dry_run)?;
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Try { package, path, format, output } => try_cmd(&package, &path, format, output),
+        Cmd::Try { package, path, format, output } => {
+            let cfg = Config::load(&path)?;
+            try_cmd(&package, &path, &cfg, format, output)
+        }
         Cmd::Tui { path } => {
             let cfg = Config::load(&path)?;
-            let adapter = pick_adapter(&path)?;
+            let adapter = pick_adapter(&path, &cfg)?;
             depsandbox_tui::run(path, adapter, cfg)?;
             Ok(ExitCode::SUCCESS)
         }
@@ -92,16 +95,15 @@ fn run() -> Result<ExitCode> {
     }
 }
 
-fn try_cmd(package: &str, path: &PathBuf, format: Format, output: Option<PathBuf>) -> Result<ExitCode> {
-    let cfg = Config::load(path)?;
-    let adapter = pick_adapter(path)?;
+fn try_cmd(package: &str, path: &Path, cfg: &Config, format: Format, output: Option<PathBuf>) -> Result<ExitCode> {
+    let adapter = pick_adapter(path, cfg)?;
 
     let target = UpgradeTarget::parse(package);
     if cfg.ignore.iter().any(|i| i == &target.package) {
         bail!("'{}' está em `ignore` no depsandbox.toml", target.package);
     }
 
-    let report = engine::try_upgrade(adapter.as_ref(), path, &target, &cfg, &RunOptions::default(), &|m| eprintln!("• {m}"))?;
+    let report = engine::try_upgrade(adapter.as_ref(), path, &target, cfg, &RunOptions::default(), &|m| eprintln!("• {m}"))?;
 
     let text = match format {
         Format::Md => depsandbox_report::to_markdown(&report),
@@ -121,14 +123,24 @@ fn try_cmd(package: &str, path: &PathBuf, format: Format, output: Option<PathBuf
     })
 }
 
-fn pick_adapter(path: &std::path::Path) -> Result<Arc<dyn depsandbox_core::Adapter>> {
+fn pick_adapter(path: &Path, cfg: &Config) -> Result<Arc<dyn depsandbox_core::Adapter>> {
+    // O depsandbox.toml pode fixar o ecossistema (ex.: monorepos com dois lockfiles).
+    if let Some(name) = &cfg.ecosystem {
+        return match depsandbox_adapters::by_ecosystem(name) {
+            Some(a) => Ok(a),
+            None => bail!(
+                "ecossistema '{}' no depsandbox.toml não é suportado (opções: npm, pnpm, yarn)",
+                name
+            ),
+        };
+    }
     let mut adapters = depsandbox_adapters::detect(path);
     match adapters.len() {
         0 => bail!("nenhum ecossistema suportado detectado em {}", path.display()),
         1 => Ok(adapters.remove(0)),
         n => bail!(
-            "{n} ecossistemas detectados ({:?}); suporte a vários ainda não implementado",
-            adapters.iter().map(|a| a.ecosystem()).collect::<Vec<_>>()
+            "{n} ecossistemas detectados ({:?}); fixe `ecosystem` no depsandbox.toml",
+            adapters.iter().map(|a| a.ecosystem().name()).collect::<Vec<_>>()
         ),
     }
 }

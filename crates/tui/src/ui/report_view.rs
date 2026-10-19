@@ -44,7 +44,7 @@ pub fn lines(rep: &Report) -> Vec<Line<'static>> {
         out.push(Line::styled("  nenhum", Style::new().fg(DIM)));
     }
     let mut findings = rep.findings.clone();
-    findings.sort_by(|a, b| b.severity.cmp(&a.severity));
+    findings.sort_by_key(|f| std::cmp::Reverse(f.severity));
     for fi in &findings {
         let c = match fi.severity {
             Severity::Error => ERR,

@@ -449,13 +449,12 @@ impl App {
                     None
                 };
             }
-            KeyCode::Char('r') => {
-                if !self.latest_loading {
+            KeyCode::Char('r')
+                if !self.latest_loading => {
                     self.latest_loading = true;
                     self.status = "a consultar o registo...".into();
                     return Some(Cmd::RefreshLatest);
                 }
-            }
             _ => {}
         }
         None
