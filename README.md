@@ -29,6 +29,7 @@ depsandbox schema > report.schema.json
 
 ```
 depsandbox tui            # na pasta do projeto
+depsandbox gui            # interface gráfica GPUI (macOS/Linux)
 ```
 
 Assistente de upgrade em 3 passos (projeto, pacote, opções), com execução ao vivo

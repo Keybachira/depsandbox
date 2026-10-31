@@ -51,6 +51,12 @@ enum Cmd {
         #[arg(long, default_value = ".")]
         path: PathBuf,
     },
+    /// Abre a interface gráfica GPUI
+    #[cfg(feature = "gui")]
+    Gui {
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+    },
     /// Imprime o JSON Schema do relatório
     Schema,
 }
@@ -85,6 +91,13 @@ fn run() -> Result<ExitCode> {
             let cfg = Config::load(&path)?;
             let adapter = pick_adapter(&path, &cfg)?;
             depsandbox_tui::run(path, adapter, cfg)?;
+            Ok(ExitCode::SUCCESS)
+        }
+        #[cfg(feature = "gui")]
+        Cmd::Gui { path } => {
+            let cfg = Config::load(&path)?;
+            let adapter = pick_adapter(&path, &cfg)?;
+            depsandbox_gui::run(path, adapter, cfg)?;
             Ok(ExitCode::SUCCESS)
         }
         Cmd::Schema => {

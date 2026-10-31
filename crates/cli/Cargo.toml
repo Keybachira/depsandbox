@@ -9,6 +9,10 @@ description = "Sandbox isolado para testar upgrades de dependências antes de to
 name = "depsandbox"
 path = "src/main.rs"
 
+[features]
+default = []
+gui = ["dep:depsandbox-gui"]
+
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
@@ -19,3 +23,4 @@ depsandbox-core.workspace = true
 depsandbox-adapters.workspace = true
 depsandbox-report.workspace = true
 depsandbox-tui.workspace = true
+depsandbox-gui = { workspace = true, optional = true }

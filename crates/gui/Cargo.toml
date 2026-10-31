@@ -1,0 +1,12 @@
+[package]
+name = "depsandbox-gui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Interface gráfica GPUI do depsandbox"
+
+[dependencies]
+anyhow.workspace = true
+gpui.workspace = true
+depsandbox-core.workspace = true
+
